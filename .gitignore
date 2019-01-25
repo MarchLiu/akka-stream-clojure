@@ -1,7 +1,14 @@
+<<<<<<< HEAD
+=======
+/target
+/classes
+/checkouts
+>>>>>>> project init
 pom.xml
 pom.xml.asc
 *.jar
 *.class
+<<<<<<< HEAD
 /lib/
 /classes/
 /target/
@@ -12,3 +19,9 @@ pom.xml.asc
 .lein-failures
 .nrepl-port
 .cpcache/
+=======
+/.lein-*
+/.nrepl-port
+.hgignore
+.hg/
+>>>>>>> project init
