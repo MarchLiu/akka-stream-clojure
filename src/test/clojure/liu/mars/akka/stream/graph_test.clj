@@ -103,30 +103,28 @@
   (let [system (ActorSystem/create "test")
         materializer (ActorMaterializer/create system)
         src (Source/from (range))]
-    (-> (g/graph
+    (-> (g/source-graph
           (fn [builder]
             (let [zip (.add builder (Zip/create))]
               (|=> builder (.filter src (predicate [_ param] (even? param))) (.in0 zip))
               (|=> builder (.filter src (predicate [_ param] (odd? param))) (.in1 zip))
               (SourceShape/of (.out zip)))))
-        (Source/fromGraph)
         (.take 100)
         (.runWith (Sink/foreach (procedure [arg] (is (= (inc (.first arg)) (.second arg))))) materializer))))
 
 (deftest flow-graph
   (let [system (ActorSystem/create "test")
         materializer (ActorMaterializer/create system)
-        pairs (Flow/fromGraph
-                (g/graph
-                  (fn [builder]
-                    (let [bcast (g/broadcast builder 2)
-                          zip (.add builder (Zip/create))]
-                      (|=> builder bcast (.in0 zip))
-                      (|=> builder bcast
-                           (-> (Flow/of Integer)
-                               (.map (function [_ arg] (str arg))))
-                           (.in1 zip))
-                      (FlowShape/of (.in bcast) (.out zip))))))]
+        pairs (g/flow-graph
+                (fn [builder]
+                  (let [bcast (g/broadcast builder 2)
+                        zip (.add builder (Zip/create))]
+                    (|=> builder bcast (.in0 zip))
+                    (|=> builder bcast
+                         (-> (Flow/of Integer)
+                             (.map (function [_ arg] (str arg))))
+                         (.in1 zip))
+                    (FlowShape/of (.in bcast) (.out zip)))))]
     (-> (Source/single 1)
         (.via pairs)
         (.runWith (Sink/foreach (procedure [arg] (println arg))) materializer))))

@@ -236,5 +236,17 @@
   [& args]
   (RunnableGraph/fromGraph (apply graph args)))
 
+(defn source-graph
+  [& args]
+  (Source/fromGraph (apply graph args)))
+
+(defn flow-graph
+  [& args]
+  (Flow/fromGraph (apply graph args)))
+
+(defn sink-graph
+  [& args]
+  (Sink/fromGraph (apply graph args)))
+
 (defn closed-shape []
   (ClosedShape/getInstance))
