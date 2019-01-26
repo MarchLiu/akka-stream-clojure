@@ -110,7 +110,10 @@
               (|=> builder (.filter src (predicate [_ param] (odd? param))) (.in1 zip))
               (SourceShape/of (.out zip)))))
         (.take 100)
-        (.runWith (Sink/foreach (procedure [arg] (is (= (inc (.first arg)) (.second arg))))) materializer))))
+        (.runWith (Sink/foreach
+                    (procedure [arg]
+                      (is (= (inc (.first arg)) (.second arg)))))
+                  materializer))))
 
 (deftest flow-graph
   (let [system (ActorSystem/create "test")
@@ -121,10 +124,14 @@
                         zip (.add builder (Zip/create))]
                     (|=> builder bcast (.in0 zip))
                     (|=> builder bcast
-                         (-> (Flow/of Integer)
+                         (-> (Flow/of Long)
                              (.map (function [_ arg] (str arg))))
                          (.in1 zip))
                     (FlowShape/of (.in bcast) (.out zip)))))]
-    (-> (Source/single 1)
+    (-> (Source/from (range))
         (.via pairs)
-        (.runWith (Sink/foreach (procedure [arg] (println arg))) materializer))))
+        (.take 100)
+        (.runWith (Sink/foreach
+                    (procedure [arg]
+                      (is (= (str (.first arg)) (.second arg)))))
+                  materializer))))
