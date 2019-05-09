@@ -1,6 +1,7 @@
 (ns liu.mars.akka.stream.graph-test
+  (:require [clojure.string :refer [starts-with?]])
   (:require [clojure.test :refer :all])
-  (:require [jaskell.handle :refer [function def-generator-1 def-generator-2]])
+  (:require [jaskell.handle :refer [def-generator-1 def-generator-2]])
   (:require [liu.mars.akka.stream.graph :as g :refer [|=>]])
   (:import (akka.stream.javadsl Source Sink Flow Keep ZipWith Zip)
            (akka.japi.function Function Procedure Function2)
@@ -13,6 +14,7 @@
        ~@body)))
 
 (def-generator-1 predicate [akka.japi.function.Predicate test])
+(def-generator-1 function [Function apply])
 (def-generator-2 function2 [Function2 apply])
 
 (deftest basic-graph
@@ -21,16 +23,16 @@
         source (Source/from (range 10))
         sink (Sink/foreach (procedure [param] (is (instance? String param))))
         f1 (-> (Flow/of Integer)
-               (.map (function [_ arg]
+               (.map (function [arg]
                        (+ 10 arg))))
         f2 (-> (Flow/of Integer)
-               (.map (function [_ arg]
+               (.map (function [arg]
                        (+ 20 arg))))
         f3 (-> (Flow/of Integer)
-               (.map (function [_ arg]
+               (.map (function [arg]
                        (str arg))))
         f4 (-> (Flow/of Integer)
-               (.map (function [_ arg]
+               (.map (function [arg]
                        (+ 30 arg))))]
     (-> (g/runnable-graph
           sink
@@ -48,7 +50,7 @@
         top-head-sink (Sink/foreach (procedure [param] (is (= 2 param))))
         bottom-head-sink (Sink/foreach (procedure [param] (is (= 2 param))))
         shared-doubler (-> (Flow/of Integer)
-                           (.map (function [_ param] (* 2 param))))]
+                           (.map (function [param] (* 2 param))))]
     (-> (g/runnable-graph top-head-sink bottom-head-sink (Keep/both)
                           (fn [builder top bottom]
                             (let [bcast (g/broadcast builder 2)]
@@ -62,9 +64,9 @@
         materializer (ActorMaterializer/create system)
         sinks (for [prefix ["a" "b" "c"]]
                 (-> (Flow/of String)
-                    (.filter (predicate [_ param] (.startsWith param prefix)))
+                    (.filter (predicate [param] (starts-with? param prefix)))
                     (.toMat (Sink/foreach
-                              (procedure [param] (is (.startsWith param prefix))))
+                              (procedure [param] (is (starts-with? param prefix))))
                             (Keep/right))))]
     (-> (g/runnable-graph
           sinks
@@ -80,7 +82,7 @@
   (let [system (ActorSystem/create "test")
         materializer (ActorMaterializer/create system)
         pick-max-of-three (g/graph (fn [builder]
-                                     (let [zip (ZipWith/create (function2 [_ x y] (max x y)))
+                                     (let [zip (ZipWith/create (function2 [x y] (max x y)))
                                            zip1 (.add builder zip)
                                            zip2 (.add builder zip)]
                                        (|=> builder (.out zip1) (.in0 zip2))
@@ -106,8 +108,8 @@
     (-> (g/source-graph
           (fn [builder]
             (let [zip (.add builder (Zip/create))]
-              (|=> builder (.filter src (predicate [_ param] (even? param))) (.in0 zip))
-              (|=> builder (.filter src (predicate [_ param] (odd? param))) (.in1 zip))
+              (|=> builder (.filter src (predicate [param] (even? param))) (.in0 zip))
+              (|=> builder (.filter src (predicate [param] (odd? param))) (.in1 zip))
               (SourceShape/of (.out zip)))))
         (.take 100)
         (.runWith (Sink/foreach
@@ -125,7 +127,7 @@
                     (|=> builder bcast (.in0 zip))
                     (|=> builder bcast
                          (-> (Flow/of Long)
-                             (.map (function [_ arg] (str arg))))
+                             (.map (function [arg] (str arg))))
                          (.in1 zip))
                     (FlowShape/of (.in bcast) (.out zip)))))]
     (-> (Source/from (range))
